@@ -14,8 +14,12 @@
         
         /* Pantallas principales */
         #login-screen { background: linear-gradient(135deg, #0a1f44 0%, #1a3a6a 100%); height: 100vh; display: flex; align-items: center; justify-content: center; }
+        #video-screen { background: #000; height: 100vh; display: flex; align-items: center; justify-content: center; }
         #intro-screen { background: #0a1f44; height: 100vh; display: flex; align-items: center; justify-content: center; color: white; text-align: center; }
         
+        /* Contenedor del video cinematográfico */
+        .video-container { width: 100%; max-width: 800px; padding: 20px; box-shadow: 0 0 30px rgba(197, 160, 89, 0.2); border-radius: 10px; }
+
         /* Estilos de la Pantalla de Introducción */
         .spinner-oro { color: var(--oro) !important; width: 3rem; height: 3rem; }
         .fade-in-text { animation: fadeIn 1.5s ease-in-out; }
@@ -53,6 +57,15 @@
             <input type="password" id="p_log" class="form-control mb-3 shadow-sm">
         </div>
         <button onclick="ejecutarLogin()" class="btn btn-dark w-100 py-2 fw-bold shadow" style="background-color: var(--oro); border:none;">INGRESAR AL SISTEMA</button>
+    </div>
+</div>
+
+<div id="video-screen" class="d-none">
+    <div class="video-container">
+        <video id="intro-video" width="100%" height="auto" preload="auto" muted playsinline>
+            <source src="https://github.com/drrubenmpereyra-stack/intro-aula-virtial-cc-DRPEREYRA/raw/refs/heads/main/INTRO_CC.mp4" type="video/mp4">
+            Tu navegador no soporta la reproducción de este video.
+        </video>
     </div>
 </div>
 
@@ -96,14 +109,13 @@ let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     participantes: [], encuentros: [], talleres: [], agenda: [], pagos: [], asistencias: [], notas: [], materiales: [], analiticosVisibles: {}, testsIA: [], anuncio: "", legajos: {} 
 };
 
-// Listado oficial absoluto (Mantiene DNI real para no romper registros previos de notas/pagos)
 const listadoOficialEstudiantes = [
     { apellido: "RIOS", nombre: "Estudiante", dni: "17319305", codigo: "R305", profesion: "-", celular: "-" },
     { apellido: "SCHWAB", nombre: "Estudiante", dni: "24557473", codigo: "S473", profesion: "-", celular: "-" },
     { apellido: "RODRIGUEZ", nombre: "Estudiante", dni: "17319325", codigo: "R325", profesion: "-", celular: "-" },
     { apellido: "STEFANINI", nombre: "Estudiante", dni: "30772297", codigo: "S297", profesion: "-", celular: "-" },
     { apellido: "CAON", nombre: "Estudiante", dni: "32458703", codigo: "C703", profesion: "-", celular: "-" },
-    { apellido: "PRAVAZ", nombre: "Estudiante", dni: "32059206", codigo: "P206", profesion: "-", celular: "-" }
+    { apellido: "PRAVAZ", nombre: "Estudiante", dni: "32059206", profesion: "-", celular: "-" }
 ];
 
 function asegurarParticipantesInternos() {
@@ -113,7 +125,6 @@ function asegurarParticipantesInternos() {
         if (!existe) {
             db.participantes.push(est);
         } else {
-            // Asegura que tengan asignado el campo 'codigo' para su visualización en la tabla
             let pActual = db.participantes.find(p => p.dni === est.dni);
             if(!pActual.codigo) pActual.codigo = est.codigo;
         }
@@ -125,11 +136,11 @@ asegurarParticipantesInternos();
 let sesion = null;
 let testTemp = null;
 let timerVar = null;
-let editIndex = -1; // Variable de control para edición de alumnos
+let editIndex = -1;
 
 const guardar = () => localStorage.setItem(DB_KEY, JSON.stringify(db));
 
-// --- NUEVO LOGIN CON MATRIZ DIRECTA BLINDADA ---
+// --- LOGIN CON SECUENCIA DE VIDEO DESDE ENLACE RAW Y BIENVENIDA ---
 function ejecutarLogin() {
     asegurarParticipantesInternos();
     const u = document.getElementById('u_log').value.trim().toUpperCase();
@@ -153,25 +164,38 @@ function ejecutarLogin() {
         return alert("Credenciales incorrectas.");
     }
 
-    // Pantalla de introducción intermedia por 3 segundos
+    // Fase 1: Activar Pantalla de Video Remoto y reproducirlo
     document.getElementById('login-screen').classList.add('d-none');
-    document.getElementById('intro-screen').classList.remove('d-none');
-    document.getElementById('intro-nombre-usuario').innerText = sesion.nombre;
+    document.getElementById('video-screen').classList.remove('d-none');
+    
+    const video = document.getElementById('intro-video');
+    video.currentTime = 0;
+    video.play().catch(err => console.log("Streaming de video remoto iniciado"));
 
+    // Secuencia de tiempos: 10 segundos de video, luego pasa a la Bienvenida de texto
     setTimeout(() => {
-        document.getElementById('intro-screen').classList.add('d-none');
-        document.getElementById('app-screen').classList.remove('d-none');
-        document.getElementById('label-usuario').innerText = sesion.nombre;
-        
-        if(db.anuncio) {
-            const nb = document.getElementById('global-notif');
-            nb.innerText = "📢 " + db.anuncio;
-            nb.classList.remove('d-none');
-        }
-        
-        renderMenu();
-        vHome();
-    }, 3000);
+        video.pause();
+        document.getElementById('video-screen').classList.add('d-none');
+        document.getElementById('intro-screen').classList.remove('d-none');
+        document.getElementById('intro-nombre-usuario').innerText = sesion.nombre;
+
+        // Fase 2: 3 segundos finales de Inicialización de entorno antes del panel principal
+        setTimeout(() => {
+            document.getElementById('intro-screen').classList.add('d-none');
+            document.getElementById('app-screen').classList.remove('d-none');
+            document.getElementById('label-usuario').innerText = sesion.nombre;
+            
+            if(db.anuncio) {
+                const nb = document.getElementById('global-notif');
+                nb.innerText = "📢 " + db.anuncio;
+                nb.classList.remove('d-none');
+            }
+            
+            renderMenu();
+            vHome();
+        }, 3000);
+
+    }, 10000); // 10000ms exactos de video intro cinematográfica
 }
 
 function renderMenu() {
@@ -224,9 +248,9 @@ function vHome() {
     }
 }
 
-// --- GESTIÓN DE PARTICIPANTES (CON COLUMNA DNI Y BOTÓN MODIFICAR) ---
+// --- GESTIÓN DE PARTICIPANTES ---
 function vPart() {
-    editIndex = -1; // Resetear estado de edicion
+    editIndex = -1;
     let h = `<h3>Participantes</h3>
     <div class="card p-3 mb-3 bg-light border-0 shadow-sm">
         <div class="row g-2">
@@ -278,10 +302,8 @@ function addP() {
     if(!documentId) return alert("El campo DNI es obligatorio legalmente.");
 
     if(editIndex === -1) {
-        // Modo Añadir Nuevo
         db.participantes.push({ apellido: ape, nombre: nom, dni: documentId, codigo: cod || documentId, profesion: prof, celular: cel });
     } else {
-        // Modo Modificar Existente
         db.participantes[editIndex] = { apellido: ape, nombre: nom, dni: documentId, codigo: cod || documentId, profesion: prof, celular: cel };
     }
     
