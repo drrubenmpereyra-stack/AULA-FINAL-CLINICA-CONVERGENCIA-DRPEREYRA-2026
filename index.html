@@ -50,6 +50,7 @@
         .qr-contenedor-estático { max-width: 180px; margin: 15px auto; padding: 10px; background: white; border: 2px dashed var(--oro); border-radius: 10px; }
         .qr-contenedor-estático img { width: 100%; height: auto; display: block; }
     </style>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 </head>
 <body>
 
@@ -547,35 +548,16 @@ function vAnaliticoAlumnoView() {
     const v = document.getElementById('main-view');
     let pAlu = db.participantes.find(x => x.dni === sesion.dni);
     if (pAlu && db.analiticosVisibles[sesion.dni]) {
-        
-        // Convertimos el enlace de Drive al formato /preview para que el iframe pueda leerlo
-        let urlOriginal = pAlu.driveFolder || "";
-        let urlPreview = urlOriginal;
-        
-        if (urlOriginal.includes("drive.google.com")) {
-            if (urlOriginal.includes("/view")) {
-                urlPreview = urlOriginal.split("/view")[0] + "/preview";
-            } else if (urlOriginal.includes("?usp=")) {
-                urlPreview = urlOriginal.split("?usp=")[0] + "/preview";
-            } else if (!urlOriginal.endsWith("/preview")) {
-                // Si es un enlace limpio de carpeta o archivo, intentamos asegurar el remate
-                urlPreview = urlOriginal.replace(/\/$/, "") + "/preview";
-            }
-        }
-
         v.innerHTML = `<h3>Mi Certificado Analítico Oficial</h3>
-        <p class="text-muted">Su analítico oficial ha sido auditado, validado y guardado por la dirección médica en el repositorio oficial.</p>
-        <div class="card p-4 border-0 shadow-sm text-center" style="max-width: 520px; border-top: 4px solid var(--oro) !important;">
+        <p class="text-muted">Su analítico ha sido validado, firmado y subido al repositorio oficial de la dirección.</p>
+        <div class="card p-4 border-0 shadow-sm text-center" style="max-width: 500px; border-top: 4px solid var(--oro) !important;">
             <h5 class="fw-bold text-azul">${sesion.nombre.toUpperCase()}</h5>
-            <p class="small bg-light p-2 rounded fw-bold text-secondary">Documento de Identidad Legal DNI N°: ${sesion.dni}</p>
-            
-            <div class="my-4 p-3 bg-light rounded border text-center">
-                <span class="small fw-bold text-azul d-block mb-2">REPOSITORIO DIGITAL DEL CURSANTE</span>
-                <button onclick="abrirVisorAlumno('${urlPreview}')" class="btn btn-dark w-100 fw-bold py-2 shadow-sm" style="background-color: var(--azul);">
-                   <i class="fa-solid fa-file-pdf text-warning me-2"></i> VER ANALÍTICO
-                </button>
+            <p class="small bg-light p-2 rounded fw-bold text-secondary">Documento Legal DNI N°: ${sesion.dni}</p>
+            <div class="my-3">
+                <a href="${pAlu.driveFolder}" target="_blank" class="btn btn-dark w-100 fw-bold py-2 shadow-sm" style="background-color: var(--azul);">
+                   📥 ACCEDER A MI CARPETA REPOSITORIO (GOOGLE DRIVE)
+                </a>
             </div>
-            
             <div class="mt-4 p-3 bg-light rounded border text-center">
                 <span class="small fw-bold text-azul d-block mb-2">CÓDIGO QR DE VALIDACIÓN ACADÉMICA</span>
                 <div class="qr-contenedor-estático shadow-sm">
@@ -667,32 +649,8 @@ function restaurarBackup() {
     };
     lector.readAsText(archivoInput.files[0]);
 }
-function abrirVisorAlumno(urlPreview) {
-    // 1. Inyectamos la URL de Drive en el iframe del visor
-    document.getElementById('pdf-frame').src = urlPreview;
-    
-    // 2. Limpiamos el contenedor de mensajes del Drive
-    document.getElementById('drive-link-container').innerHTML = `
-        <span class="badge bg-primary p-2"><i class="fa-solid fa-eye me-1"></i> Modo Vista Previa</span>
-    `;
-    
-    // 3. Reconfiguramos la botonera inferior para que el alumno SOLO vea los dos botones solicitados
-    const footer = document.querySelector('.visor-footer');
-    if (footer) {
-        footer.innerHTML = `
-            <div id="drive-link-container" class="me-auto d-flex align-items-center">
-                <span class="badge bg-primary p-2"><i class="fa-solid fa-eye me-1"></i> Modo Vista Previa</span>
-            </div>
-            <a href="${urlPreview.replace('/preview', '/view')}" target="_blank" class="btn btn-dark fw-bold px-4">
-                📥 GUARDAR / IMPRIMIR ANALÍTICO
-            </a>
-            <button class="btn btn-secondary px-4" onclick="cerrarVisor()">SALIR</button>
-         Palmy`;
-    }
 
-    // 4. Mostramos el visor modal en la pantalla
-    document.getElementById('pdf-visor-modal').style.display = 'flex';
-}
 </script>
 </body>
+
 </html>
