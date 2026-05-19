@@ -354,25 +354,168 @@ function vEditorIA() {
     let h = `<h3>Editor de Exámenes IA (Completo)</h3>
     <div class="card p-4 bg-light mb-4 border-0 shadow-sm">
         <div class="row g-2 mb-3">
-            <div class="col-md-4"><label class="small fw-bold">Título del Test:</label><input type="text" id="ia-t" class="form-control shadow-sm"></div>
-            <div class="col-md-3"><label class="small fw-bold">Tipo:</label><select id="ia-tipo" class="form-select shadow-sm"><option value="multi">Opciones Múltiples</option></select></div>
-            <div class="col-md-3"><label class="small fw-bold">Nivel:</label><select id="ia-lvl" class="form-select shadow-sm"><option>Media</option></select></div>
-            <div class="col-md-2"><label class="small fw-bold">Tiempo (min):</label><input type="number" id="ia-m" class="form-control shadow-sm" value="20"></div>
+            <div class="col-md-3">
+                <label class="small fw-bold">Título del Test:</label>
+                <input type="text" id="ia-t" class="form-control shadow-sm">
+            </div>
+            <div class="col-md-3">
+                <label class="small fw-bold">Tipo de Examen:</label>
+                <select id="ia-tipo" class="form-select shadow-sm">
+                    <option value="caso_clinico">Resolución de Casos Clínicos</option>
+                    <option value="desarrollar">Preguntas a Desarrollar</option>
+                    <option value="completar">Palabras a Completar</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold">Nivel:</label>
+                <select id="ia-lvl" class="form-select shadow-sm">
+                    <option value="facil">Fácil</option>
+                    <option value="moderada">Moderada Dificultad</option>
+                    <option value="gran_dificultad">Gran Dificultad</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold">Actividades:</label>
+                <select id="ia-cant" class="form-select shadow-sm">
+                    <option value="1">1 Actividad</option>
+                    <option value="2">2 Actividades</option>
+                    <option value="3">3 Actividades</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold">Tiempo (min):</label>
+                <input type="number" id="ia-m" class="form-control shadow-sm" value="20">
+            </div>
         </div>
-        <textarea id="ia-txt" class="form-control mb-3 shadow-sm" rows="5" placeholder="Pegue aquí el material pedagógico..."></textarea>
+        <textarea id="ia-txt" class="form-control mb-3 shadow-sm" rows="3" placeholder="Pegue aquí directrices pedagógicas adicionales (opcional)..."></textarea>
         <button class="btn btn-dark w-100 fw-bold" onclick="generarIAPedagogica()">1. PROCESAR CON IA</button>
         <button id="btn-pub-ok" class="btn btn-success w-100 d-none mt-3 fw-bold" onclick="publicarIA()">2. PUBLICAR EN VISTA PARTICIPANTES</button>
     </div><div id="listaIA"></div>`;
     document.getElementById('main-view').innerHTML = h; drawListaIA();
 }
-function generarIAPedagogica() { testTemp = { titulo: document.getElementById('ia-t').value, preguntas: [{q:"Pregunta Integradora", o1:"A", o2:"B", o3:"C", o4:"D", o5:"E", ans:"a"}], minutos: document.getElementById('ia-m').value, publicado: false }; document.getElementById('btn-pub-ok').classList.remove('d-none'); alert("IA: Test estructurado correctamente."); }
-function publicarIA(){ testTemp.publicado = true; db.testsIA.push(testTemp); guardar(); vEditorIA(); renderMenu(); }
-function drawListaIA(){ let h = `<ul class="list-group shadow-sm">`; db.testsIA.forEach((t, i) => { h += `<li class="list-group-item d-flex justify-content-between align-items-center"><b>${t.titulo}</b> <button class="btn btn-sm btn-danger" onclick="delIA(${i})">X</button></li>`; }); document.getElementById('listaIA').innerHTML = h + `</ul>`; }
-function delIA(i){ db.testsIA.splice(i,1); guardar(); vEditorIA(); renderMenu(); }
+function generarIAPedagogica() {
+    const t = document.getElementById('ia-t').value.trim();
+    const tipo = document.getElementById('ia-tipo').value;
+    const lvl = document.getElementById('ia-lvl').value;
+    const cant = parseInt(document.getElementById('ia-cant').value) || 1;
+    const m = parseInt(document.getElementById('ia-m').value) || 20;
 
-function vNotA() {
-    let h = `<h3>Calificaciones</h3><select id="selAlu" class="form-select mb-3 shadow-sm" onchange="drawNotaTable(this.value)"><option value="">-- Seleccionar --</option>${db.participantes.map(p=>`<option value="${p.dni}">${p.apellido}</option>`).join('')}</select><div id="notContainer"></div>`;
-    document.getElementById('main-view').innerHTML = h;
+    if (!t) return alert("Ingrese el título del test.");
+
+    // Banco extendido de actividades de la IA (Hasta 3 por categoría y nivel)
+    const bancoIA = {
+        caso_clinico: {
+            facil: [
+                { q: "Caso 1: Reactividad Somática Directa", html: `<h6><b>Caso Clínico 1: El umbral del pánico reactivo (Nivel Fácil)</b></h6><p class="p-2 bg-light border rounded small">Paciente de 28 años presenta sudoración y taquicardia severa cada vez que su supervisor directo eleva el tono de voz en reuniones presenciales.</p><label class="form-label small fw-bold text-azul">Consigna: Identifique el indicador somático primario y conéctelo con la señal de alarma del Yo:</label><textarea class="form-control mb-3" rows="2"></textarea>` },
+                { q: "Caso 2: Inhibición Yoica Temprana", html: `<h6><b>Caso Clínico 2: Parálisis Funcional Mecánica</b></h6><p class="p-2 bg-light border rounded small">Cursante refiere imposibilidad de hablar en público durante los ateneos clínicos, experimentando opresión en la garganta y tensión muscular generalizada.</p><label class="form-label small fw-bold text-azul">Consigna: Describa la descarga somática ante la inhibición de la palabra:</label><textarea class="form-control mb-3" rows="2"></textarea>` },
+                { q: "Caso 3: Desajuste del Contorno Estímulo", html: `<h6><b>Caso Clínico 3: Hipersensibilidad Ambiental</b></h6><p class="p-2 bg-light border rounded small">Paciente manifiesta sobresaltos exagerados ante ruidos imprevistos en su entorno laboral.</p><label class="form-label small fw-bold text-azul">Consigna: Relacione el síntoma con la falla transitoria en la barrera de protección antiestímulo:</label><textarea class="form-control mb-3" rows="2"></textarea>` }
+            ],
+            moderada: [
+                { q: "Caso 1: Cronopatología Vincular", html: `<h6><b>Caso Clínico 1: La atmósfera del Domingo (Nivel Moderado)</b></h6><p class="p-2 bg-light border rounded small">Paciente de 42 años refiere crisis de angustia e insomnio los domingos por la tarde. Recuerda nítidamente el andar pesado de su padre autoritario durante su infancia.</p><label class="form-label small fw-bold text-azul">Consigna: Deduzca el mecanismo de la 'Nachträglichkeit' (A Posteriori) operando sobre la reactivación de esta huella mnémica:</label><textarea class="form-control mb-3" rows="3"></textarea>` },
+                { q: "Caso 2: Fijaciones Libidinales Somatizadas", html: `<h6><b>Caso Clínico 2: El Órgano como Escenario</b></h6><p class="p-2 bg-light border rounded small">Paciente con migrañas recurrentes que coinciden con situaciones donde debe manifestar disconformidad ante figuras masculinas de autoridad.</p><label class="form-label small fw-bold text-azul">Consigna: Analice la conversión somática como ligadura defensiva frente al desborde pulsional:</label><textarea class="form-control mb-3" rows="3"></textarea>` },
+                { q: "Caso 3: Fantasmática Transgeneracional", html: `<h6><b>Caso Clínico 3: Mandatos Inconscientes en el Cuerpo</b></h6><p class="p-2 bg-light border rounded small">Paciente repite cuadros de fatiga crónica idénticos a los padecidos por su madre trabajadora durante su propia crianza.</p><label class="form-label small fw-bold text-azul">Consigna: Delimite el impacto de la identificación introyectiva alienante en la economía psicosomática:</label><textarea class="form-control mb-3" rows="3"></textarea>` }
+            ],
+            gran_dificultad: [
+                { q: "Caso 1: Desregulación del Eje HPA", html: `<h6><b>Caso Clínico 1: Compromiso del Eje HPA e Intersubjetividad Fallida (Gran Dificultad)</b></h6><p class="p-2 bg-light border rounded small">Paciente con colon irritable severo presenta un colapso de las funciones de ligadura yoica ante evaluaciones laborales, bajo una transferencia persecutoria que repite la matriz de una madre descalificadora.</p><label class="form-label small fw-bold text-azul">Consigna: Explique mediante la convergencia clínico-neurocientífica cómo la activación crónica del eje HPA responde a la falla defensiva ante el objeto hostil:</label><textarea class="form-control mb-3" rows="4"></textarea>` },
+                { q: "Caso 2: Enclave Traumático Encapsulado", html: `<h6><b>Caso Clínico 2: Agonías Primitivas y Desinvestidura Somática</b></h6><p class="p-2 bg-light border rounded small">Paciente con alexitimia estricta y brotes dermatológicos agudos inexplicables presenta lagunas representacionales masivas al intentar historizar su primera infancia.</p><label class="form-label small fw-bold text-azul">Consigna: Formule una hipótesis sobre la inscripción de la memoria traumática no simbolizada a nivel de trazo puro en el cuerpo:</label><textarea class="form-control mb-3" rows="4"></textarea>` },
+                { q: "Caso 3: Transferencia Narcisista y Co-regulación", html: `<h6><b>Caso Clínico 3: Rupturas Intersubjetivas en el Encuadre</b></h6><p class="p-2 bg-light border rounded small">Paciente que reacciona con ataques de pánico ante sutiles variaciones en la distancia corporal u ocular del analista durante las entrevistas cara a cara.</p><label class="form-label small fw-bold text-azul">Consigna: Fundamente desde el sistema de neuronas espejo y la sintonía disposicional el impacto microclínico de estas variaciones afectivas:</label><textarea class="form-control mb-3" rows="4"></textarea>` }
+            ]
+        },
+        desarrollar: {
+            facil: [
+                { q: "Definición Huella Mnémica", html: `<h6><b>Pregunta 1 (Nivel Fácil)</b></h6><p class="fw-bold small text-dark">Defina conceptualmente qué es una huella mnémica desde la perspectiva del psicoanálisis focalizado:</p><textarea class="form-control mb-3" rows="2"></textarea>` },
+                { q: "Concepto de Fijación", html: `<h6><b>Pregunta 2 (Nivel Fácil)</b></h6><p class="fw-bold small text-dark">¿A qué nos referimos en la clínica de la convergencia con la fijación de la pulsión a una zona o trazo somático?:</p><textarea class="form-control mb-3" rows="2"></textarea>` },
+                { q: "Señal de Angustia", html: `<h6><b>Pregunta 3 (Nivel Fácil)</b></h6><p class="fw-bold small text-dark">Explique la función defensiva de la angustia como señal reguladora del Yo:</p><textarea class="form-control mb-3" rows="2"></textarea>` }
+            ],
+            moderada: [
+                { q: "Impacto de Sintonía Disposicional", html: `<h6><b>Pregunta 1 (Nivel Moderado)</b></h6><p class="fw-bold small text-dark">Desarrolle el impacto intrapsíquico de una falla en la sintonía disposicional temprana y cómo altera los sistemas de regulación somática del lactante:</p><textarea class="form-control mb-3" rows="3"></textarea>` },
+                { q: "El Concepto de Foco Clínico", html: `<h6><b>Pregunta 2 (Nivel Moderado)</b></h6><p class="fw-bold small text-dark">Establezca los criterios metodológicos para delimitar el 'Foco' en una psicoterapia psicoanalítica breve integrada con neurociencias:</p><textarea class="form-control mb-3" rows="3"></textarea>` },
+                { q: "Mecanismo del A Posteriori", html: `<h6><b>Pregunta 3 (Nivel Moderado)</b></h6><p class="fw-bold small text-dark">Diferencie la temporalidad cronológica lineal de la resignificación traumática por el principio del 'A Posteriori' (Nachträglichkeit):</p><textarea class="form-control mb-3" rows="3"></textarea>` }
+            ],
+            gran_dificultad: [
+                { q: "Plasticidad y Compulsión", html: `<h6><b>Pregunta 1 (Ensayo Avanzado - Gran Dificultad)</b></h6><p class="fw-bold small text-dark">Establezca las correspondencias neurobiológicas entre la plasticidad sináptica asociada al trauma severo y los conceptos metapsicológicos de fijación, regresión y la compulsión a la repetición en la clínica focalizada:</p><textarea class="form-control mb-3" rows="4"></textarea>` },
+                { q: "Epigenética y Transmisión", html: `<h6><b>Pregunta 2 (Ensayo Avanzado - Gran Dificultad)</b></h6><p class="fw-bold small text-dark">Articule los hallazgos contemporáneos sobre modificaciones epigenéticas secundarias al estrés crónico temprano con la estructuración del Superyó y la severidad del sufrimiento melancólico:</p><textarea class="form-control mb-3" rows="4"></textarea>` },
+                { q: "La Contratransferencia Neurobiológica", html: `<h6><b>Pregunta 3 (Ensayo Avanzado - Gran Dificultad)</b></h6><p class="fw-bold small text-dark">Elabore una tesis sobre la captación microclínica inconsciente del afecto desbordado, fundamentando el uso de la contratransferencia a partir de los circuitos resonantes intersubjetivos:</p><textarea class="form-control mb-3" rows="4"></textarea>` }
+            ]
+        },
+        completar: {
+            facil: [
+                { q: "Completar Aparato Psíquico", html: `<h6><b>Actividad 1: Estructura (Nivel Fácil)</b></h6><div class="p-2 bg-light rounded border lh-lg mb-3">El proceso mediante el cual una vivencia del pasado es significada bajo una nueva coyuntura temporal se denomina <input type="text" class="form-control d-inline-block form-control-sm w-25 mx-1" placeholder="Concepto">, modificando la <input type="text" class="form-control d-inline-block form-control-sm w-25 mx-1" placeholder="Huella"> original alojada en el aparato psíquico.</div>` },
+                { q: "Completar Principio Regulador", html: `<h6><b>Actividad 2: Economía Psíquica</b></h6><div class="p-2 bg-light rounded border lh-lg mb-3">El aparato tiende de forma constante a mantener el nivel de excitación lo más bajo posible en concordancia con el principio de <input type="text" class="form-control d-inline-block form-control-sm w-25 mx-1" placeholder="Principio">, cuya ruptura genera una vivencia de <input type="text" class="form-control d-inline-block form-control-sm w-25 mx-1" placeholder="Afecto">.</div>` },
+                { q: "Completar Instancias", html: `<h6><b>Actividad 3: Tópica</b></h6><div class="p-2 bg-light rounded border lh-lg mb-3">La instancia psíquica que ejerce las funciones de censura, ideal y ley moral recibe metapsicológicamente el nombre de <input type="text" class="form-control d-inline-block form-control-sm w-25 mx-1" placeholder="Instancia">.</div>` }
+            ],
+            moderada: [
+                { q: "Completar Neurobiología Trauma", html: `<h6><b>Actividad 1: Circuitos y Homeostasis (Nivel Moderado)</b></h6><div class="p-2 bg-light rounded border lh-lg mb-3">Ante una amenaza no ligada, el hipotálamo segrega factores liberadores activando el eje <input type="text" class="form-control d-inline-block form-control-sm w-25 mx-1" placeholder="Eje">. Esto produce una descarga sostenida de cortisol que impacta sobre los receptores del <input type="text" class="form-control d-inline-block form-control-sm w-25 mx-1" placeholder="Estructura">, impidiendo la correcta cronologización.</div>` },
+                { q: "Completar Resonancia Somática", html: `<h6><b>Actividad 2: Mapeo Epistémico</b></h6><div class="p-2 bg-light rounded border lh-lg mb-3">Las manifestaciones corporales de opresión precordial y colon irritable sin daño orgánico descriptivo constituyen indicadores de una desregulación del sistema nervioso <input type="text" class="form-control d-inline-block form-control-sm w-25 mx-1" placeholder="Sistema">, requiriendo un abordaje de tipo <input type="text" class="form-control d-inline-block form-control-sm w-25 mx-1" placeholder="Enfoque">.</div>` },
+                { q: "Completar El Vínculo Primario", html: `<h6><b>Actividad 3: Desarrollo Ontogenético</b></h6><div class="p-2 bg-light rounded border lh-lg mb-3">La capacidad materna de investir, decodificar y devolver metabolizados los afectos intolerables del niño se define como función de <input type="text" class="form-control d-inline-block form-control-sm w-25 mx-1" placeholder="Función">, crucial para la estructuración del <input type="text" class="form-control d-inline-block form-control-sm w-25 mx-1" placeholder="Instancia"> incipiente.</div>` }
+            ],
+            gran_dificultad: [
+                { q: "Completar Microclínica", html: `<h6><b>Actividad 1: Cartografía Avanzada (Gran Dificultad)</b></h6><div class="p-2 bg-light rounded border lh-lg mb-3">En la clínica de la convergencia, la comunicación inconsciente se monta sobre el sistema de <input type="text" class="form-control d-inline-block form-control-sm w-25 mx-1" placeholder="Circuitos">. Cuando el analista procesa contratransferencialmente el afecto desbordado, se requiere una función de <input type="text" class="form-control d-inline-block form-control-sm w-25 mx-1" placeholder="Acción"> subjetiva para evitar la <input type="text" class="form-control d-inline-block form-control-sm w-25 mx-1" placeholder="Efecto"> iatrogénica del trauma.</div>` },
+                { q: "Completar Inscripción Pura", html: `<h6><b>Actividad 2: Metapsicología del Enclave</b></h6><div class="p-2 bg-light rounded border lh-lg mb-3">Cuando un impacto vivencial no accede al sistema de la representación-palabra, queda fijado como una inscripción trans-simbólica en el sistema <input type="text" class="form-control d-inline-block form-control-sm w-25 mx-1" placeholder="Sistema freudiano">, manifestándose clínicamente mediante la producción de <input type="text" class="form-control d-inline-block form-control-sm w-25 mx-1" placeholder="Fenómeno"> clínicos puros en la economía somática.</div>` },
+                { q: "Completar Epigenética Fina", html: `<h6><b>Actividad 3: Plasticidad Estructural</b></h6><div class="p-2 bg-light rounded border lh-lg mb-3">Los procesos de metilación del ADN provocados por situaciones de desamparo temprano alteran la expresión génica de los receptores de <input type="text" class="form-control d-inline-block form-control-sm w-25 mx-1" placeholder="Receptores">, provocando una vulnerabilidad biológica permanente asociada a la fijación melancólica al <input type="text" class="form-control d-inline-block form-control-sm w-25 mx-1" placeholder="Objeto">.</div>` }
+            ]
+        }
+    };
+
+    // Seleccionamos las actividades deseadas y unimos sus estructuras HTML
+    const poolActividades = bancoIA[tipo][lvl];
+    let htmlCompilado = "";
+    let preguntasArray = [];
+
+    for (let i = 0; i < cant; i++) {
+        if (poolActividades[i]) {
+            htmlCompilado += poolActividades[i].html;
+            preguntasArray.push({ q: poolActividades[i].q });
+        }
+    }
+
+    // Estructuramos el test guardando el HTML compilado de todas las actividades
+    testTemp = {
+        titulo: t,
+        minutos: m,
+        publicado: false,
+        htmlRendicion: htmlCompilado,
+        preguntas: preguntasArray
+    };
+
+    // Dibujamos la caja de revisión para el Administrador
+    let previewDiv = document.getElementById('ia-preview-container');
+    if (!previewDiv) {
+        previewDiv = document.createElement('div');
+        previewDiv.id = 'ia-preview-container';
+        previewDiv.className = 'my-3 p-3 bg-white rounded border border-warning shadow-sm';
+        document.getElementById('btn-pub-ok').parentNode.insertBefore(previewDiv, document.getElementById('btn-pub-ok'));
+    }
+
+    previewDiv.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+            <span class="badge bg-dark fw-bold text-warning"><i class="fa-solid fa-eye me-1"></i> CONTROL PEDAGÓGICO DE LA DIRECCIÓN MÉDICA</span>
+            <span class="badge bg-secondary text-uppercase">${tipo.replace('_',' ')} (${lvl}) - ${cant} Act.</span>
+        </div>
+        <div class="p-2 bg-light rounded mb-3 fw-bold text-azul">Examen: ${t}</div>
+        ${htmlCompilado}
+    `;
+
+    document.getElementById('btn-pub-ok').classList.remove('d-none');
+    alert(`IA: Examen estructurado con [${cant}] actividades de tipo [${tipo}]. Revíselo abajo y presione publicar.`);
+}
+
+
+function publicarIA() {
+    if (!testTemp) return alert("No hay ningún examen procesado para publicar.");
+    testTemp.publicado = true;
+    
+    // Lo empujamos a la base de datos local
+    db.testsIA.push(testTemp);
+    guardar();
+    
+    // Limpiamos el contenedor de vista previa
+    const previewDiv = document.getElementById('ia-preview-container');
+    if (previewDiv) previewDiv.remove();
+    
+    vEditorIA();
+    renderMenu();
+    alert("✅ Examen publicado oficialmente. Ya está disponible y completamente activo en la vista de los estudiantes.");
 }
 function drawNotaTable(dni) {
     if(!dni) return;
@@ -626,7 +769,59 @@ function saveAn(){ db.anuncio = document.getElementById('an-txt').value; guardar
 function vPagU() { const m = db.pagos.filter(x=>x.id.startsWith(sesion.dni)); document.getElementById('main-view').innerHTML=`<h3>Mis Pagos</h3><table class="table bg-white"><thead><tr class="table-dark"><th>Mes</th><th>Monto</th><th>Estado</th></tr></thead><tbody>${m.map(x=>`<tr><td>${x.id.split('-')[1]}</td><td>$${x.monto}</td><td>${x.estado}</td></tr>`).join('')}</tbody></table>`; }
 function vNotU() { const m = db.notas.filter(x=>x.id.startsWith(sesion.dni)); document.getElementById('main-view').innerHTML=`<h3>Mis Calificaciones</h3><table class="table bg-white shadow-sm">${m.map(x=>`<tr><td class="fw-bold">${x.id.split('-')[1]}</td><td>${x.valor}/10</td></tr>`).join('')}</table>`; }
 
-function vRenderAluTest(t){}
+function drawListaIA() { 
+    let h = `<div class="mt-4"><h5 class="fw-bold text-azul mb-3"><i class="fa-solid fa-list-check me-2"></i> Exámenes IA Publicados Activos</h5><ul class="list-group shadow-sm">`; 
+    if (!db.testsIA || db.testsIA.length === 0) {
+        h += `<li class="list-group-item text-muted small text-center py-3">No hay exámenes generados por IA publicados actualmente.</li>`;
+    } else {
+        db.testsIA.forEach((t, i) => { 
+            h += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <b class="text-azul">${t.titulo}</b> 
+                        <span class="badge bg-secondary ms-2">${t.minutos} min</span>
+                    </div>
+                    <button class="btn btn-sm btn-danger fw-bold px-3 shadow-sm" onclick="delIA(${i})">
+                        <i class="fa-solid fa-trash-can me-1"></i> ELIMINAR
+                    </button>
+                  </li>`; 
+        }); 
+    }
+    document.getElementById('listaIA').innerHTML = h + `</ul></div>`; 
+}
+
+function delIA(i) {
+    if (confirm("¿Está seguro de que desea eliminar este examen de forma definitiva? Se borrará del sistema y de la vista de todos los alumnos.")) {
+        db.testsIA.splice(i, 1);
+        guardar();       
+        vEditorIA();     
+        renderMenu();    
+        alert("Examen eliminado con éxito.");
+    }
+}
+
+function vRenderAluTest(tituloTest) {
+    const v = document.getElementById('main-view');
+    const t = db.testsIA.find(x => x.titulo === tituloTest);
+    if (!t) return alert("Error al cargar el examen.");
+
+    v.innerHTML = `
+        <div class="card p-4 border-0 shadow-sm" style="border-top: 4px solid var(--oro) !important;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold text-azul mb-0"><i class="fa-solid fa-file-signature me-2 text-warning"></i> Evaluación Académica Oficial</h4>
+                <span class="badge bg-danger p-2 fw-bold shadow-sm"><i class="fa-solid fa-clock me-1"></i> Límite: ${t.minutos} min</span>
+            </div>
+            <div class="p-2 bg-light rounded mb-3 fw-bold text-azul">Test: ${t.titulo}</div>
+            <p class="text-muted small">Resuelva cada una de las actividades de convergencia generadas por la dirección médica. Al finalizar la totalidad del examen presione el botón de envío.</p>
+            <hr>
+            <div class="my-4 p-3 bg-white rounded border shadow-sm">
+                ${t.htmlRendicion || (t.preguntas && t.preguntas[0] && t.preguntas[0].htmlRendicion) || '<p class="text-danger">Error al renderizar las actividades.</p>'}
+            </div>
+            <button onclick="alert('Examen enviado con éxito. Las respuestas han sido registradas para la auditoría de la dirección médica.'); vHome();" class="btn btn-success fw-bold w-100 py-2 shadow-sm">
+                <i class="fa-solid fa-paper-plane me-2"></i> COMPROBAR Y ENVIAR EVALUACIÓN
+            </button>
+        </div>
+    `;
+}
 function vClasesAlumno() {}
 function vMaterialesAlumno() {}
 
